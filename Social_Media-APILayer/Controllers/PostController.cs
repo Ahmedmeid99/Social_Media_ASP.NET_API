@@ -5,10 +5,11 @@ using Social_Media_APILayer.Data;
 using Social_Media_APILayer.Dtos.Comment;
 using Social_Media_APILayer.Dtos.Post;
 using Social_Media_APILayer.Models;
+using Social_Media_APILayer.Models.Views;
 
 namespace Social_Media_APILayer.Controllers
 {
-	[Route("api/[controller]")]
+    [Route("api/[controller]")]
 	[ApiController]
 	public class PostController : ControllerBase
 	{
@@ -21,28 +22,7 @@ namespace Social_Media_APILayer.Controllers
 			_context = context;
 		}
 
-		[HttpGet]
-		public async Task<ActionResult<IEnumerable< PostsView>>> GetPostDetails()
-		{
-			try {
-				var posts = await _context.PostsViews.ToListAsync();
-				
-
-				if (posts == null)
-			{
-				return NoContent();
-			}
-
-			return Ok(posts);
-		}
-		catch (Exception ex)
-		{
-			// Handle exception or log it
-			return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
-		}
-}
-
-
+		
 		[HttpPost]
 		public async Task<IActionResult> AddPost([FromForm] PostAddDto dto)
 		{
@@ -118,46 +98,6 @@ namespace Social_Media_APILayer.Controllers
 			return Ok(createdPost);
 		}
 
-		[HttpGet("{id}")]
-		public async Task<ActionResult<Post>> GetPostById(int id)
-		{
-			var post = await _context.Posts.FindAsync(id);
-			if (post == null)
-			{
-				return NotFound();
-			}
-
-			return post;
-		}
-
-		[HttpDelete("{id}")]
-		public async Task<IActionResult> DeletePostById(int id)
-		{
-			// Find the post by ID
-			var post = await _context.Posts.FindAsync(id);
-			if (post == null)
-			{
-				return NotFound();
-			}
-			
-			// Delete related UserReactions first
-			var userReactions = _context.UserReactions.Where(ur => ur.PostId == post.PostId);
-			_context.UserReactions.RemoveRange(userReactions);
-
-			// Delete related UserReactions first
-			var userComments = _context.Comments.Where(c => c.PostId == post.PostId);
-			_context.Comments.RemoveRange(userComments);
-
-			// Remove the post
-			_context.Posts.Remove(post);
-
-			// Save changes asynchronously
-			await _context.SaveChangesAsync();
-
-			// Return NoContent (204) as a standard response for deletion
-			return NoContent();
-		}
-
 		[HttpPut("{id}")]
 		public async Task<IActionResult> UpdatePostById(int id, PostEditDto dto)
 		{
@@ -222,36 +162,167 @@ namespace Social_Media_APILayer.Controllers
 			return Ok(updatedPost);
 
 		}
+
+
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> DeletePostById(int id)
+		{
+			// Find the post by ID
+			var post = await _context.Posts.FindAsync(id);
+			if (post == null)
+			{
+				return NotFound();
+			}
+			
+			// Delete related UserReactions first
+			var userReactions = _context.UserReactions.Where(ur => ur.PostId == post.PostId);
+			_context.UserReactions.RemoveRange(userReactions);
+
+			// Delete related UserReactions first
+			var userComments = _context.Comments.Where(c => c.PostId == post.PostId);
+			_context.Comments.RemoveRange(userComments);
+
+			// Remove the post
+			_context.Posts.Remove(post);
+
+			// Save changes asynchronously
+			await _context.SaveChangesAsync();
+
+			// Return NoContent (204) as a standard response for deletion
+			return NoContent();
+		}
+
 		
+		[HttpGet("{id}")]
+		public async Task<ActionResult<Post>> GetPostById(int id)
+		{
+			var post = await _context.Posts.FindAsync(id);
+			if (post == null)
+			{
+				return NotFound();
+			}
+
+			return post;
+		}
+
+
+		[HttpGet]
+		public async Task<ActionResult<IEnumerable<PostsView>>> GetPostDetails()
+		{
+			try
+			{
+				var posts = await _context.PostsViews.ToListAsync();
+
+
+				if (posts == null)
+				{
+					return NoContent();
+				}
+
+				return Ok(posts);
+			}
+			catch (Exception ex)
+			{
+				// Handle exception or log it
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
+
+		[HttpGet("user/{userId}/page/{page}/pageSize/{pageSize}")]
+		public async Task<ActionResult<IEnumerable<PostsView>>> GetUserPosts(int userId, int page, int pageSize)
+		{
+			var user = await _context.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+
+			if (user == null)
+			{
+				return NotFound();
+			}
+
+			var relatedUserPosts = await _context.PostsViews
+				.Where(p => _context.UserRelationships
+					.Any(r => (r.UserId1 == userId && r.UserId2 == p.UserID) ||
+							  (r.UserId2 == userId && r.UserId1 == p.UserID)))
+				.Skip((page - 1) * pageSize)
+				.Take(pageSize)
+				.ToListAsync();
+
+		
+			return Ok(relatedUserPosts);
+		}
+
 		[HttpGet("users/{userId}/posts")]
 		public async Task<ActionResult<IEnumerable<Post>>> GetUserPostsByUserId(int userId)
 		{
 			// Retrieve posts for the specified user
-			var userPosts = await _context.Posts
-										  .Where(post => post.UserId == userId)
+			var userPosts = await _context.PostsViews
+										  .Where(post => post.UserID == userId)
 										  .ToListAsync();
 
 			// If no posts found, return a 404 NotFound
 			if (userPosts == null || !userPosts.Any())
 			{
-				return NotFound($"No posts found for UserId: {userId}");
+				return NoContent();
 			}
 
-			// Map posts to a DTO if needed
-			var postDtos = userPosts.Select(post => new Post
+			// Return the list of user posts
+			return Ok(userPosts);
+		}
+
+		[HttpGet("users/{userId}/images")]
+		public async Task<ActionResult> GetUserImagesByUserId(int userId)
+		{
+			// Retrieve posts for the specified user
+			var images = await _context.Posts.Select(post => new { post.UserId, post.PostId, post.MediaType , post.MediaData })
+										  .Where(post => post.UserId == userId && post.MediaType.StartsWith("image"))
+										  .ToListAsync();
+
+			// If no posts found, return a 404 NotFound
+			if (images == null || !images.Any())
 			{
-				PostId = post.PostId,
-				UserId = post.UserId,
-				Content = post.Content,
-				MediaType = post.MediaType,
-				MediaData = post.MediaData,
-				CreatedAt = post.CreatedAt,
-				// Include other fields as needed
-			}).ToList();
+				return NoContent();
+			}
 
 			// Return the list of user posts
-			return Ok(postDtos);
+			return Ok(images);
 		}
+
+
+		[HttpGet("users/{userId}/videos")]
+		public async Task<ActionResult> GetUserVideosByUserId(int userId)
+		{
+			// Retrieve posts for the specified user
+			var videos = await _context.Posts.Select(post => new { post.UserId, post.PostId, post.MediaType, post.MediaData })
+										  .Where(post => post.UserId == userId && post.MediaType.StartsWith("video"))
+										  .ToListAsync();
+
+			// If no posts found, return a 404 NotFound
+			if (videos == null || !videos.Any())
+			{
+				return NoContent();
+			}
+
+			// Return the list of user posts
+			return Ok(videos);
+		}
+
+		[HttpGet("users/{userId}/files")]
+		public async Task<ActionResult> GetUserFilesByUserId(int userId)
+		{
+			// Retrieve posts for the specified user
+			var files = await _context.Posts.Select(post => new { post.UserId, post.PostId, post.MediaType, post.MediaData })
+										  .Where(post => post.UserId == userId && post.MediaType.StartsWith("application"))
+										  .ToListAsync();
+
+			// If no posts found, return a 404 NotFound
+			if (files == null || !files.Any())
+			{
+				return NoContent();
+			}
+
+			// Return the list of user posts
+			return Ok(files);
+		}
+
 
 		// Get Random Posts from (frinds, user you follow) -> posts
 
@@ -264,7 +335,7 @@ namespace Social_Media_APILayer.Controllers
 				return NotFound();
 			}
 
-			return Ok(new { MediaData=post.MediaData, MediaType=post.MediaType});
+			return Ok(new { post.MediaData,post.MediaType});
 		}
 
 

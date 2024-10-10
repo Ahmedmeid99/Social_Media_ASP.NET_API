@@ -28,6 +28,12 @@ namespace Social_Media_APILayer.Controllers
 				return BadRequest(ModelState);
 			}
 
+			// Check Validation 
+			if (dto.PostId <= 0 || dto.UserId <= 0) 
+			{
+				return BadRequest("PostId or UserId unvalid");
+			}
+
 			// Step 1: Check if the user has already reacted to this post
 			var existingReaction = await _context.UserReactions
 												 .FirstOrDefaultAsync(r => r.UserId == dto.UserId && r.PostId == dto.PostId);
@@ -48,11 +54,12 @@ namespace Social_Media_APILayer.Controllers
 				CreatedAt = DateTime.Now
 			};
 
-			// Step 4: Add the new reaction
-			_context.UserReactions.Add(userReaction);
 
 			try
 			{
+				// Step 4: Add the new reaction
+				_context.UserReactions.Add(userReaction);
+
 				// Step 5: Save changes
 				await _context.SaveChangesAsync();
 
@@ -66,61 +73,8 @@ namespace Social_Media_APILayer.Controllers
 			}
 		}
 
-		[HttpGet("{id}")]
-		public async Task<ActionResult<UserReaction>> GetUserReactionById(int id)
-		{
-			var UserReaction = await _context.UserReactions.FindAsync(id);
-			if (UserReaction == null)
-			{
-				return NotFound();
-			}
-
-			return UserReaction;
-		}
-
-		[HttpDelete("{id}")]
-		public async Task<IActionResult> DeleteUserReactionById(int id)
-		{
-			// Find the post by ID
-			var UserReaction = await _context.UserReactions.FindAsync(id);
-			if (UserReaction == null)
-			{
-				return NotFound();
-			}
-
-			// Remove the post
-			_context.UserReactions.Remove(UserReaction);
-
-			// Save changes asynchronously
-			await _context.SaveChangesAsync();
-
-			// Return NoContent (204) as a standard response for deletion
-			return NoContent();
-		}
-
-		[HttpDelete("user/{userId}/post/{postId}")]
-		public async Task<IActionResult> DeleteUserReactionByUserId_PostId(int userId,int postId)
-		{
-			// Find the post by ID
-			var UserReaction = await _context.UserReactions.FirstOrDefaultAsync((u)=> u.UserId == userId && u.PostId == postId);
-			if (UserReaction == null)
-			{
-				return NotFound();
-			}
-
-			// Remove the post
-			_context.UserReactions.Remove(UserReaction);
-
-			// Save changes asynchronously
-			await _context.SaveChangesAsync();
-
-			// Return NoContent (204) as a standard response for deletion
-			return NoContent();
-		}
-
-
 		[HttpPut("{id}")]
-		public async Task<IActionResult> UpdateUserReactionById(int id,[FromBody] UserReactionEditDto dto)
+		public async Task<IActionResult> UpdateUserReactionById(int id, [FromBody] UserReactionEditDto dto)
 		{
 
 			// Retrieve the UserReaction by ID
@@ -149,9 +103,88 @@ namespace Social_Media_APILayer.Controllers
 			return NoContent(); // 204 status code mean the operation is done
 		}
 
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> DeleteUserReactionById(int id)
+		{
+			// Find the post by ID
+			var UserReaction = await _context.UserReactions.FindAsync(id);
+			if (UserReaction == null)
+			{
+				return NotFound();
+			}
+
+			try
+			{
+				// Remove the post
+				_context.UserReactions.Remove(UserReaction);
+
+				// Save changes asynchronously
+				await _context.SaveChangesAsync();
+
+				// Return NoContent (204) as a standard response for deletion
+				return NoContent();
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, $"Database error: {ex.Message}");
+
+			}
+		}
+
+		[HttpDelete("user/{userId}/post/{postId}")]
+		public async Task<IActionResult> DeleteUserReactionByUserId_PostId(int userId,int postId)
+		{
+			// Find the post by ID
+			var UserReaction = await _context.UserReactions.FirstOrDefaultAsync((u)=> u.UserId == userId && u.PostId == postId);
+			if (UserReaction == null)
+			{
+				return NotFound();
+			}
+			try
+			{
+
+
+				// Remove the post
+				_context.UserReactions.Remove(UserReaction);
+
+				// Save changes asynchronously
+				await _context.SaveChangesAsync();
+
+				// Return NoContent (204) as a standard response for deletion
+				return NoContent();
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, $"Database error: {ex.Message}");
+
+			}
+		}
+
+		[HttpGet("{id}")]
+		public async Task<ActionResult<UserReaction>> GetUserReactionById(int id)
+		{
+			try
+			{
+				var UserReaction = await _context.UserReactions.FindAsync(id);
+				if (UserReaction == null)
+				{
+					return NotFound();
+				}
+
+				return UserReaction;
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, $"Database error: {ex.Message}");
+
+			}
+		}
+
+
 		[HttpGet("posts/{postId}")]
 		public async Task<ActionResult<IEnumerable<Post>>> GetUserReactionByPostId(int postId)
 		{
+
 			// Retrieve posts for the specified user
 			var UserReactions = await _context.UserReactions
 										  .Where(reaction => reaction.PostId == postId)
@@ -163,17 +196,25 @@ namespace Social_Media_APILayer.Controllers
 				return NotFound($"No posts with postId : {postId}");
 			}
 
-			// Map posts to a DTO if needed
-			var reactions = UserReactions.Select(reaction => new UserReactionAddDto
+			try
 			{
-				UserId=reaction.UserId,
-				PostId=reaction.PostId,
-				ReactionTypeId=reaction.ReactionTypeId,
-				// Include other fields as needed
-			}).ToList();
+				// Map posts to a DTO if needed
+				var reactions = UserReactions.Select(reaction => new UserReactionAddDto
+				{
+					UserId = reaction.UserId,
+					PostId = reaction.PostId,
+					ReactionTypeId = reaction.ReactionTypeId,
+					// Include other fields as needed
+				}).ToList();
 
-			// Return the list of user posts
-			return Ok(reactions);
+				// Return the list of user posts
+				return Ok(reactions);
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, $"Database error: {ex.Message}");
+
+			}
 		}
 
 		[HttpGet("users/{userd}")]
@@ -190,17 +231,25 @@ namespace Social_Media_APILayer.Controllers
 				return NotFound($"No posts with postId : {userd}");
 			}
 
-			// Map posts to a DTO if needed
-			var reactions = UserReactions.Select(reaction => new UserReactionAddDto
+			try
 			{
-				UserId = reaction.UserId,
-				PostId = reaction.PostId,
-				ReactionTypeId = reaction.ReactionTypeId,
-				// Include other fields as needed
-			}).ToList();
 
-			// Return the list of user posts
-			return Ok(reactions);
+				// Map posts to a DTO if needed
+				var reactions = UserReactions.Select(reaction => new UserReactionAddDto
+				{
+					UserId = reaction.UserId,
+					PostId = reaction.PostId,
+					ReactionTypeId = reaction.ReactionTypeId,
+					// Include other fields as needed
+				}).ToList();
+
+				// Return the list of user posts
+				return Ok(reactions);
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message );
+			}
 		}
 		
 

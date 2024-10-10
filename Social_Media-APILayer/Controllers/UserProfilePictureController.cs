@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.EntityFrameworkCore;
 using Social_Media_APILayer.Data;
 using Social_Media_APILayer.Dtos.ProfilePicture;
@@ -50,6 +51,11 @@ namespace Social_Media_APILayer.Controllers
 				return BadRequest("The PictureData field is required.");  // Additional validation check
 			}
 
+			if (dto.UserId <= 0)
+			{
+				return BadRequest("UserId is unvalid");
+			}
+
 			// Map DTO to Entity
 			var userProfilePicture = new UserProfilePicture
 			{
@@ -74,50 +80,6 @@ namespace Social_Media_APILayer.Controllers
 			return CreatedAtAction(nameof(GetUserProfilePictureById), new { id = userProfilePicture.UserProfilePictureId }, userProfilePicture);
 		}
 
-		[HttpGet("{id}")]
-		public async Task<ActionResult<UserProfilePicture>> GetUserProfilePictureById(int id)
-		{
-			var userProfilePicture = await _context.UserProfilePictures.FindAsync(id);
-			if (userProfilePicture == null)
-			{
-				return NotFound();
-			}
-
-			return userProfilePicture;
-		}
-
-		[HttpGet("users/{userId}")]
-		public async Task<ActionResult<UserProfilePicture>> GetUserProfilePictureByUserId(int userId)
-		{
-			var userProfilePicture = await _context.UserProfilePictures.FirstOrDefaultAsync((p)=> p.UserId ==userId);
-			if (userProfilePicture == null)
-			{
-				return NotFound();
-			}
-
-			return userProfilePicture;
-		}
-
-		[HttpDelete("{id}")]
-		public async Task<IActionResult> DeleteUserProfilePictureById(int id)
-		{
-			// Find the post by ID
-			var userProfilePicture = await _context.UserProfilePictures.FindAsync(id);
-			if (userProfilePicture == null)
-			{
-				return NotFound();
-			}
-
-			// Remove the post
-			_context.UserProfilePictures.Remove(userProfilePicture);
-
-			// Save changes asynchronously
-			await _context.SaveChangesAsync();
-
-			// Return NoContent (204) as a standard response for deletion
-			return NoContent();
-		}
-
 		[HttpPut("{id}")]
 		public async Task<IActionResult> UpdatePostById(int id, UserProfilePictureEditDto dto)
 		{
@@ -129,6 +91,7 @@ namespace Social_Media_APILayer.Controllers
 					{
 						await dto.ImageFile.CopyToAsync(memoryStream);
 						dto.PictureData = memoryStream.ToArray();  // Convert to byte array
+						dto.MediaType = dto.ImageFile.ContentType;
 					}
 				}
 				catch (Exception ex)
@@ -140,7 +103,7 @@ namespace Social_Media_APILayer.Controllers
 
 			// Retrieve the post by ID
 			var userProfilePictures = await _context.UserProfilePictures.FindAsync(id);
-			
+
 			if (userProfilePictures == null)
 			{
 				return NotFound();
@@ -162,9 +125,75 @@ namespace Social_Media_APILayer.Controllers
 				return StatusCode(StatusCodes.Status500InternalServerError, $"Database error: {ex.Message}");
 			}
 
-			return NoContent(); // 204 status code mean the operation is done
+			return Ok(userProfilePictures); // 204 status code mean the operation is done
 		}
 
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> DeleteUserProfilePictureById(int id)
+		{
+			// Find the post by ID
+			var userProfilePicture = await _context.UserProfilePictures.FindAsync(id);
+			if (userProfilePicture == null)
+			{
+				return NotFound();
+			}
+			try
+			{
+
+
+				// Remove the post
+				_context.UserProfilePictures.Remove(userProfilePicture);
+
+				// Save changes asynchronously
+				await _context.SaveChangesAsync();
+
+				// Return NoContent (204) as a standard response for deletion
+				return NoContent();
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
+
+		
+		[HttpGet("{id}")]
+		public async Task<ActionResult<UserProfilePicture>> GetUserProfilePictureById(int id)
+		{
+			try
+			{
+				var userProfilePicture = await _context.UserProfilePictures.FindAsync(id);
+				if (userProfilePicture == null)
+				{
+					return NotFound();
+				}
+
+				return userProfilePicture;
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
+
+		[HttpGet("users/{userId}")]
+		public async Task<ActionResult<UserProfilePicture>> GetUserProfilePictureByUserId(int userId)
+		{
+			try
+			{
+				var userProfilePicture = await _context.UserProfilePictures.FirstOrDefaultAsync((p) => p.UserId == userId);
+				if (userProfilePicture == null)
+				{
+					return NotFound();
+				}
+
+				return userProfilePicture;
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, $"{ex.Message}");
+			}
+		}
 
 
 	}

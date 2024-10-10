@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Social_Media_APILayer.Models;
+using Social_Media_APILayer.Models.NewFolder;
+using Social_Media_APILayer.Models.Views;
 
 namespace Social_Media_APILayer.Data;
 
@@ -17,36 +19,22 @@ public partial class AppDbcontext : DbContext
     }
 
     public virtual DbSet<Comment> Comments { get; set; }
-
     public virtual DbSet<Country> Countries { get; set; }
-
     public virtual DbSet<Message> Messages { get; set; }
-
     public virtual DbSet<Post> Posts { get; set; }
-
     public virtual DbSet<User> Users { get; set; }
-
     public virtual DbSet<UserBackgroundPicture> UserBackgroundPictures { get; set; }
-
     public virtual DbSet<UserProfilePicture> UserProfilePictures { get; set; }
-
     public virtual DbSet<UserRelationship> UserRelationships { get; set; }
-
 	public DbSet<ReactionType> ReactionTypes { get; set; } = null!;
-
+	public DbSet<RelationshipType> RelationshipTypes { get; set; } = null!;
 	public DbSet<UserReaction> UserReactions { get; set; } = null!;
 
 	public DbSet<PostsView> PostsViews { get; set; }
 	public DbSet<CommentsView> CommentsViews { get; set; }
+	public DbSet<UsersView> UsersViews { get; set; }
+	public DbSet<UserRelationshipView> UserRelationshipViews { get; set; }
 
-	protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-
-        if (!optionsBuilder.IsConfigured)
-        {
-            optionsBuilder.UseSqlServer(Settings.ConnectionString);
-        }
-    }
 
 	protected override void OnModelCreating(ModelBuilder modelBuilder)
 	{
@@ -312,6 +300,18 @@ public partial class AppDbcontext : DbContext
 		{
 			entity.HasNoKey();  // Since it's a view
 			entity.ToView("CommentsView");  // Map to the actual database view
+		});
+
+		modelBuilder.Entity<UsersView>(entity =>
+		{
+			entity.HasNoKey();  // Since it's a view
+			entity.ToView("UsersView");  // Map to the actual database view
+		});
+
+		modelBuilder.Entity<UserRelationshipView>(entity =>
+		{
+			entity.HasNoKey();  // Since it's a view
+			entity.ToView("UserRelationshipView");  // Map to the actual database view
 		});
 
 		OnModelCreatingPartial(modelBuilder);

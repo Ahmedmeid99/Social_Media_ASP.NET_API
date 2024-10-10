@@ -134,3 +134,4 @@ E:\Old_Computer\00-FullStack_DotNet_App\Social_Media_Application\Social_Media-AP
 E:\Old_Computer\00-FullStack_DotNet_App\Social_Media_Application\Social_Media-APILayer\Social_Media-APILayer\obj\Release\net8.0\Social_Media-APILayer.pdb
 E:\Old_Computer\00-FullStack_DotNet_App\Social_Media_Application\Social_Media-APILayer\Social_Media-APILayer\obj\Release\net8.0\Social_Media-APILayer.genruntimeconfig.cache
 E:\Old_Computer\00-FullStack_DotNet_App\Social_Media_Application\Social_Media-APILayer\Social_Media-APILayer\obj\Release\net8.0\ref\Social_Media-APILayer.dll
+E:\Old_Computer\00-FullStack_DotNet_App\Social_Media_Application\Social_Media-APILayer\Social_Media-APILayer\obj\Release\net8.0\Social_Media-APILayer.sourcelink.json

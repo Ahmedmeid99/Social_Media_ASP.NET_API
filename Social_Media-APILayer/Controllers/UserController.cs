@@ -31,6 +31,11 @@ namespace Social_Media_APILayer.Controllers
 			{
 				return BadRequest(ModelState);
 			}
+			
+			if(string.IsNullOrEmpty( dto.UserName) || string.IsNullOrEmpty(dto.Password)  || string.IsNullOrEmpty(dto.Email))
+			{
+				return BadRequest("UserName or Password or Email is unvalid");
+			}
 
 			// Check if the username already exists
 			if (await _context.Users.AnyAsync(u => u.UserName == dto.UserName))
@@ -58,10 +63,18 @@ namespace Social_Media_APILayer.Controllers
 				CreatedAt = DateTime.Now
 			};
 
-			_context.Users.Add(user);
-			await _context.SaveChangesAsync();
+			try
+			{
 
-			return Ok(new { UserId = user.UserId });
+				_context.Users.Add(user);
+				await _context.SaveChangesAsync();
+
+				return Ok(new { UserId = user.UserId });
+			}
+			catch (Exception ex) 
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
 		}
 
 
@@ -73,21 +86,33 @@ namespace Social_Media_APILayer.Controllers
 				return BadRequest(new { message = "Invalid input data", errors = ModelState });
 			}
 
+			if (string.IsNullOrEmpty(dto.UserName) || string.IsNullOrEmpty(dto.Password) )
+			{
+				return BadRequest("UserName or Password is unvalid");
+			}
+
 			var passwordHash = PasswordHasher.HashingPassword(dto.Password);
 			var user = await _context.Users
 				.FirstOrDefaultAsync(u => u.UserName == dto.UserName && u.PasswordHash == passwordHash);
 
-			if (user != null)
+			try
 			{
-				
-				return Ok( user );
+				if (user != null)
+				{
+					return Ok(user);
+				}
+				else
+				{
+					return Unauthorized(new { message = "Invalid username or password" });
+				}
 			}
-			else
+			catch (Exception ex) 
 			{
-				return Unauthorized(new { message = "Invalid username or password" });
+				return StatusCode(StatusCodes.Status500InternalServerError,ex.Message);
 			}
 		}
 
+		
 		// delete and related posts of this user
 		// Get ByUserId
 
@@ -106,6 +131,11 @@ namespace Social_Media_APILayer.Controllers
 				return NotFound();
 			}
 
+			if (string.IsNullOrEmpty(dto.UserName) || string.IsNullOrEmpty(dto.Password) || string.IsNullOrEmpty(dto.Email))
+			{
+				return BadRequest("UserName or Password or Email is unvalid");
+			}
+
 			// Only update fields that are provided in the DTO
 			user.UserName = dto.UserName ?? user.UserName;
 			user.Address = dto.Address ?? user.Address;
@@ -119,14 +149,123 @@ namespace Social_Media_APILayer.Controllers
 			user.Phone = dto.Phone ?? user.Phone;
 			user.DateOfBirth = dto.DateOfBirth != default ? dto.DateOfBirth : user.DateOfBirth;
 			user.CountryId = dto.CountryId != 0 ? dto.CountryId : user.CountryId;
-			
+			try
+			{
 
-			// Save changes to the database
-			await _context.SaveChangesAsync();
 
-			return Ok(user);
+				// Save changes to the database
+				await _context.SaveChangesAsync();
+
+				return Ok(user);
+			}
+			catch (Exception ex) 
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+
 		}
 
+		[HttpGet("{userId}")]
+		public async Task<ActionResult> GetUser(int userId)
+		{
+
+			if (userId <= 0)
+			{
+				return BadRequest("userId is Invalid");
+			}
+
+			var user = await _context.UsersViews
+				.FirstOrDefaultAsync((u) => u.UserId == userId);
+
+			try
+			{
+				if (user != null)
+				{
+					return Ok(user);
+				}
+				else
+				{
+					return Unauthorized(new { message = "Invalid username or password" });
+				}
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
+
+
+		[HttpGet("getRelatedUsers/user/{userId}")]
+		public async Task<ActionResult> GetRelatedUsers(int userId)
+		{
+			var user = await _context.Users.FindAsync(userId);
+
+			if (user == null) 
+			{
+				return BadRequest("user was not found");
+			}
+
+
+			try
+			{
+				var usersWithNoRelationship = await _context.UsersViews
+				.Where(u => u.CountryId == user.CountryId && u.UserId != user.UserId)
+				.Where(u => !_context.UserRelationships.Any(r =>
+					(r.UserId1 == user.UserId && r.UserId2 == u.UserId) ||
+					(r.UserId2 == user.UserId && r.UserId1 == u.UserId)
+				))
+				.ToListAsync();
+				
+				if (usersWithNoRelationship != null && usersWithNoRelationship.Count > 0)
+				{
+					return Ok(usersWithNoRelationship);
+				}
+				else
+				{
+					return NoContent();
+				}
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
+
+		[HttpGet("getUnRelatedUsers/user/{userId}")]
+		public async Task<ActionResult> GetUnRelatedUsers(int userId)
+		{
+			var user = await _context.Users.FindAsync(userId);
+
+			if (user == null)
+			{
+				return BadRequest("user was not found");
+			}
+
+
+			try
+			{
+				var usersWithNoRelationship = await _context.UsersViews
+				.Where(u =>  u.UserId != user.UserId)
+				.Where(u => !_context.UserRelationships.Any(r =>
+					(r.UserId1 == user.UserId && r.UserId2 == u.UserId) ||
+					(r.UserId2 == user.UserId && r.UserId1 == u.UserId)
+				))
+				.ToListAsync();
+
+				if (usersWithNoRelationship != null && usersWithNoRelationship.Count > 0)
+				{
+					return Ok(usersWithNoRelationship);
+				}
+				else
+				{
+					return NoContent();
+				}
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
 
 	}
 }

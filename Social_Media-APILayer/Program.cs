@@ -16,8 +16,6 @@ namespace Social_Media_APILayer
 
 			// Add services to the container.
 
-			// builder.Services.AddControllers();
-			// Add services to the container.
 			builder.Services.AddControllers()
 				.AddJsonOptions(options =>
 				{
@@ -42,8 +40,9 @@ namespace Social_Media_APILayer
 			if (app.Environment.IsDevelopment())
 			{
 			}
-				app.UseSwagger();
-				app.UseSwaggerUI();
+
+			app.UseSwagger();
+			app.UseSwaggerUI();
 
 
 			app.UseHttpsRedirection();

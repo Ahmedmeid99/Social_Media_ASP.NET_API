@@ -28,6 +28,11 @@ namespace Social_Media_APILayer.Controllers
 				return BadRequest(ModelState);
 			}
 
+			if (dto.SenderId <= 0 || dto.ReceiverId <= 0 || string.IsNullOrEmpty(dto.MessageText)) 
+			{ 
+				return BadRequest("SenderId or ReceiverId or MessageText is unValid");
+			}
+
 			// Map DTO to Entity
 			var message = new Message
 			{
@@ -51,38 +56,6 @@ namespace Social_Media_APILayer.Controllers
 			return CreatedAtAction(nameof(GetMessageById), new { id = message.MessageId }, message);
 		}
 
-		[HttpGet("{id}")]
-		public async Task<ActionResult<Message>> GetMessageById(int id)
-		{
-			var message = await _context.Messages.FindAsync(id);
-			if (message == null)
-			{
-				return NotFound();
-			}
-
-			return message;
-		}
-
-		[HttpDelete("{id}")]
-		public async Task<IActionResult> DeleteMessageById(int id)
-		{
-			// Find the post by ID
-			var message = await _context.Messages.FindAsync(id);
-			if (message == null)
-			{
-				return NotFound();
-			}
-
-			// Remove the post
-			_context.Messages.Remove(message);
-
-			// Save changes asynchronously
-			await _context.SaveChangesAsync();
-
-			// Return NoContent (204) as a standard response for deletion
-			return NoContent();
-		}
-
 		[HttpPut("{id}")]
 		public async Task<IActionResult> UpdateMessageById(int id, MessageEditDto dto)
 		{
@@ -92,6 +65,11 @@ namespace Social_Media_APILayer.Controllers
 			if (message == null)
 			{
 				return NotFound();
+			}
+
+			if (string.IsNullOrEmpty(dto.MessageText))
+			{
+				return BadRequest("MessageText is unvalid");
 			}
 
 			// Update Message properties
@@ -113,6 +91,54 @@ namespace Social_Media_APILayer.Controllers
 			return NoContent(); // 204 status code mean the operation is done
 		}
 
+		
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> DeleteMessageById(int id)
+		{
+			// Find the post by ID
+			var message = await _context.Messages.FindAsync(id);
+			if (message == null)
+			{
+				return NotFound();
+			}
+			try
+			{
+				// Remove the post
+				_context.Messages.Remove(message);
+
+				// Save changes asynchronously
+				await _context.SaveChangesAsync();
+
+				// Return NoContent (204) as a standard response for deletion
+				return NoContent();
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
+
+		[HttpGet("{id}")]
+		public async Task<ActionResult<Message>> GetMessageById(int id)
+		{
+			try
+			{
+				var message = await _context.Messages.FindAsync(id);
+				if (message == null)
+				{
+					return NotFound();
+				}
+
+				return message;
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+
+		}
+
+
 		[HttpGet("users/{userId}/{userId2}")]
 		public async Task<ActionResult<IEnumerable<Post>>> GetUserPostsByUserId(int userId,int userId2)
 		{
@@ -128,18 +154,27 @@ namespace Social_Media_APILayer.Controllers
 				return NotFound($"No posts between UserId: {userId} and UserId: {userId2}");
 			}
 
-			// Map posts to a DTO if needed
-			var comments = messages.Select(comment => new MessageAddDto
+			try
 			{
-				SenderId = comment.SenderId,
-				ReceiverId = comment.ReceiverId,
-				MessageText = comment.MessageText,
-				SentAt = comment.SentAt,
-				// Include other fields as needed
-			}).OrderBy((comment) => comment.SentAt).ToList();
 
-			// Return the list of user posts
-			return Ok(comments);
+
+				// Map posts to a DTO if needed
+				var comments = messages.Select(comment => new MessageAddDto
+				{
+					SenderId = comment.SenderId,
+					ReceiverId = comment.ReceiverId,
+					MessageText = comment.MessageText,
+					SentAt = comment.SentAt,
+					// Include other fields as needed
+				}).OrderBy((comment) => comment.SentAt).ToList();
+
+				// Return the list of user posts
+				return Ok(comments);
+			}
+			catch (Exception ex) 
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError,ex.Message);
+			}
 		}
 
 	}

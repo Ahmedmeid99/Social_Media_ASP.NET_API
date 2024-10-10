@@ -15,21 +15,26 @@ namespace Social_Media_APILayer.Controllers
 			_context = context;
 		}
 
-		//get getAll
-
 		[HttpGet]
 		public async Task<ActionResult> GetCountries()
 		{
-			var countries = await _context.Countries
-			   .Select(c => new { CountryId = c.CountryId, CountryName = c.CountryName })
-			   .ToListAsync();
-
-			if (countries.Count == 0)
+			try
 			{
-				return NotFound("There are no countries found.");
-			}
+				var countries = await _context.Countries
+				   .Select(c => new { CountryId = c.CountryId, CountryName = c.CountryName })
+				   .ToListAsync();
 
-			return Ok(countries);
+				if (countries == null || !countries.Any())
+				{
+					return NotFound($"No countries founded");
+				}
+
+				return Ok(countries);
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
 
 		}
 	}

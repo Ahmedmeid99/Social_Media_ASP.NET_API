@@ -42,6 +42,16 @@ namespace Social_Media_APILayer.Controllers
 				}
 			}
 
+			if (dto.PictureData == null) 
+			{
+				return BadRequest("PictureData is null here !!!");
+			}
+
+			if (dto.UserId <= 0) 
+			{
+				return BadRequest("UserId is unvalid");
+			}
+
 			// Map DTO to Entity
 			var userBackgroundPicture = new UserBackgroundPicture
 			{
@@ -65,50 +75,6 @@ namespace Social_Media_APILayer.Controllers
 			return CreatedAtAction(nameof(GetuserBackgroundPictureById), new { id = userBackgroundPicture.UserBackgroundPictureId }, userBackgroundPicture);
 		}
 
-		[HttpGet("{id}")]
-		public async Task<ActionResult<UserBackgroundPicture>> GetuserBackgroundPictureById(int id)
-		{
-			var userBackgroundPicture = await _context.UserBackgroundPictures.FindAsync(id);
-			if (userBackgroundPicture == null)
-			{
-				return NotFound();
-			}
-
-			return userBackgroundPicture;
-		}
-
-		[HttpGet("users/{userId}")]
-		public async Task<ActionResult<UserBackgroundPicture>> GetUserBackgroundPictureByUserId(int userId)
-		{
-			var userBackgroundPicture = await _context.UserBackgroundPictures.FirstOrDefaultAsync((p) => p.UserId == userId);
-			if (userBackgroundPicture == null)
-			{
-				return NotFound();
-			}
-
-			return userBackgroundPicture;
-		}
-
-		[HttpDelete("{id}")]
-		public async Task<IActionResult> DeleteuserBackgroundPictureById(int id)
-		{
-			// Find the post by ID
-			var userBackgroundPicture = await _context.UserBackgroundPictures.FindAsync(id);
-			if (userBackgroundPicture == null)
-			{
-				return NotFound();
-			}
-
-			// Remove the post
-			_context.UserBackgroundPictures.Remove(userBackgroundPicture);
-
-			// Save changes asynchronously
-			await _context.SaveChangesAsync();
-
-			// Return NoContent (204) as a standard response for deletion
-			return NoContent();
-		}
-
 		[HttpPut("{id}")]
 		public async Task<IActionResult> UpdatePostById(int id, UserBackgroundPictureEditDto dto)
 		{
@@ -120,6 +86,13 @@ namespace Social_Media_APILayer.Controllers
 					{
 						await dto.ImageFile.CopyToAsync(memoryStream);
 						dto.PictureData = memoryStream.ToArray();  // Convert to byte array
+
+						if (dto.PictureData == null || dto.PictureData.Length == 0)
+						{
+							return BadRequest("Failed to read file data.");
+						}
+
+						dto.MediaType = dto.ImageFile.ContentType;
 					}
 				}
 				catch (Exception ex)
@@ -157,6 +130,74 @@ namespace Social_Media_APILayer.Controllers
 		}
 
 
+		[HttpDelete("{id}")]
+		public async Task<IActionResult> DeleteuserBackgroundPictureById(int id)
+		{
+			// Find the post by ID
+			var userBackgroundPicture = await _context.UserBackgroundPictures.FindAsync(id);
+			if (userBackgroundPicture == null)
+			{
+				return NotFound();
+			}
+
+			try
+			{
+				// Remove the post
+				_context.UserBackgroundPictures.Remove(userBackgroundPicture);
+
+				// Save changes asynchronously
+				await _context.SaveChangesAsync();
+
+				// Return NoContent (204) as a standard response for deletion
+				return NoContent();
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
+
+		[HttpGet("{id}")]
+		public async Task<ActionResult<UserBackgroundPicture>> GetuserBackgroundPictureById(int id)
+		{
+			try
+			{
+
+
+				var userBackgroundPicture = await _context.UserBackgroundPictures.FindAsync(id);
+				if (userBackgroundPicture == null)
+				{
+					return NotFound();
+				}
+
+				return userBackgroundPicture;
+			}
+			catch (Exception ex) 
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError,ex.Message);
+			}
+		}
+
+		[HttpGet("users/{userId}")]
+		public async Task<ActionResult<UserBackgroundPicture>> GetUserBackgroundPictureByUserId(int userId)
+		{
+			try
+			{
+
+
+				var userBackgroundPicture = await _context.UserBackgroundPictures.FirstOrDefaultAsync((p) => p.UserId == userId);
+				if (userBackgroundPicture == null)
+				{
+					return NotFound();
+				}
+
+				return userBackgroundPicture;
+			}
+			catch (Exception ex)
+			{
+				return StatusCode(StatusCodes.Status500InternalServerError, ex.Message);
+			}
+		}
 
 	}
 }
